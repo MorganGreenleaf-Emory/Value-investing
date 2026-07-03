@@ -1,0 +1,11 @@
+symbol,price,pe_ratio,pb_ratio,dividend_yield,market_cap,high_52_weeks,low_52_weeks,sector,industry
+AAPL,308.24,35.611202,40.5469,0.356682,4527244176000,317.40,201.50,Electronic Technology,Telecommunications Equipment
+MSFT,389.65,22.887297,6.88958,0.926408,2894487749500,555.45,349.20,Technology Services,Packaged Software
+KO,83.98,25.594282,10.4002,2.558740,361322270400,84.04,65.3538,Consumer Non-Durables,Beverages: Non-Alcoholic
+JNJ,262.975,29.365924,7.52869,2.063155,633038679500,263.10,154.21,Health Technology,Pharmaceuticals: Major
+PG,151.42,21.562290,6.38755,2.888761,352596612000,167.25,137.62,Consumer Non-Durables,Household/Personal Care
+WFC,85.52,13.271562,1.61516,2.094485,261707448800,97.76,72.775,Finance,Major Banks
+INTC,120.41,,5.72761,,665260419703.84,142.35,18.965,Electronic Technology,Semiconductors
+PFE,24.315,18.308671,1.51044,7.202680,139742629788.29,28.745,23.11,Health Technology,Pharmaceuticals: Major
+T,20.57,6.870178,1.30076,5.419922,144462688005.65,29.79,19.89,Communications,Wireless Telecommunications
+VZ,42.56,10.231731,1.69716,6.584901,179193079484.52,51.68,38.39,Communications,Wireless Telecommunications
