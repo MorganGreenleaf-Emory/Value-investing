@@ -2,6 +2,7 @@
 
     python -m value_investing.screener AAPL KO WFC
     python -m value_investing.screener --source robinhood AAPL KO WFC
+    python -m value_investing.screener --source yfinance AAPL KO WFC
     python -m value_investing.screener AAPL --growth-rate 0.05 --discount-rate 0.09
 """
 
@@ -17,7 +18,7 @@ from .scoring import ScoredStock, score_stocks
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Score stocks on classic value-investing metrics.")
     parser.add_argument("symbols", nargs="*", help="Ticker symbols to screen (default: every row in --csv)")
-    parser.add_argument("--source", choices=["csv", "robinhood"], default="csv")
+    parser.add_argument("--source", choices=["csv", "robinhood", "yfinance"], default="csv")
     parser.add_argument("--csv", default="data/sample_stocks.csv", help="Path to the CSV file when --source csv")
     parser.add_argument("--top", type=int, default=None, help="Only show the top N results")
     parser.add_argument(
@@ -41,10 +42,14 @@ def run(argv: Optional[List[str]] = None) -> int:
 
     if args.source == "csv":
         provider = CSVProvider(args.csv)
-    else:
+    elif args.source == "robinhood":
         from .providers.robinhood_provider import RobinhoodProvider
 
         provider = RobinhoodProvider()
+    else:
+        from .providers.yfinance_provider import YFinanceProvider
+
+        provider = YFinanceProvider()
 
     try:
         dcf_assumptions = DCFAssumptions(
@@ -54,7 +59,7 @@ def run(argv: Optional[List[str]] = None) -> int:
             years=args.years,
         )
         snapshots = provider.get_snapshots(args.symbols or None)
-    except (ValueError, RuntimeError, ImportError) as exc:
+    except Exception as exc:  # provider failures (bad input, network, auth) all surface the same way
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 

@@ -12,13 +12,27 @@ a simple heuristic, not a recommendation engine.
 ## How it works
 
 1. A **provider** fetches a `StockSnapshot` (price, P/E, P/B, dividend
-   yield, 52-week range, sector) for each ticker you ask about — either
-   from a local CSV (`CSVProvider`) or live from Robinhood
-   (`RobinhoodProvider`, via the `robin_stocks` library).
+   yield, 52-week range, sector, and ideally operating cash flow/capex)
+   for each ticker you ask about. Three are available:
+   - `CSVProvider` — reads a local CSV file. No network needed.
+   - `RobinhoodProvider` — live via the `robin_stocks` library. Its
+     fundamentals endpoint has no cash-flow-statement data at all, so
+     `operating_cash_flow`/`capital_expenditures` always come back `None`
+     from this provider.
+   - `YFinanceProvider` — live via the `yfinance` library (unofficial,
+     calls/scrapes Yahoo Finance; no account or API key needed). Unlike
+     Robinhood, it also pulls `operating_cash_flow`/`capital_expenditures`
+     straight from Yahoo's cash flow statement, so FCF/DCF metrics don't
+     require manually copying numbers out of a 10-K. See the caveats in
+     `value_investing/providers/yfinance_provider.py`'s docstring — it's
+     unofficial, so Yahoo has changed field semantics before, and this
+     implementation couldn't be verified against live data from this
+     project's own sandboxed dev environment (its network policy blocks
+     calls to Yahoo). Spot-check a result against a known P/E or dividend
+     yield the first time you use it.
 2. `value_investing/metrics.py` derives value metrics from that snapshot:
    - **EPS** and **book value per share**, backed out of price ÷ P/E and
-     price ÷ P/B (Robinhood's fundamentals endpoint doesn't expose these
-     directly).
+     price ÷ P/B (neither provider exposes these directly).
    - **Graham Number** — Benjamin Graham's rule-of-thumb fair value,
      `sqrt(22.5 * EPS * book value per share)`.
    - **Margin of safety** — how far the current price sits below (or
@@ -26,11 +40,8 @@ a simple heuristic, not a recommendation engine.
    - **Price position in 52-week range** — 0.0 at the 52-week low, 1.0 at
      the 52-week high.
    - **Free cash flow** and **FCF yield** — operating cash flow minus
-     capex, as a fraction of market cap. Robinhood's fundamentals endpoint
-     has no cash-flow-statement data at all, so these two inputs have to
-     be entered manually (e.g. from a 10-K/10-Q) via the CSV provider;
-     they're `None` — and simply excluded from the score — for any stock
-     that doesn't have them.
+     capex, as a fraction of market cap. `None` — and simply excluded from
+     the score — for any stock that doesn't have both inputs.
 3. `value_investing/dcf.py` computes a **discounted cash flow (DCF) fair
    value**: project free cash flow forward at a growth rate for N years,
    discount each year back to the present, add a discounted terminal value
@@ -81,6 +92,13 @@ python -m value_investing.screener --source robinhood AAPL MSFT KO WFC
 
 (`robin_stocks` will prompt interactively for an SMS/app MFA code on first
 login.)
+
+Live, via yfinance (no account needed) — this is the source that fills in
+FCF/DCF data automatically instead of requiring the CSV's manual entry:
+
+```bash
+python -m value_investing.screener --source yfinance AAPL MSFT KO WFC
+```
 
 Bring your own watchlist by editing `data/sample_stocks.csv` or pointing
 `--csv` at your own file with the same columns:
@@ -145,17 +163,16 @@ value_investing/
   providers/
     csv_provider.py         Reads snapshots from a CSV file
     robinhood_provider.py   Reads snapshots live via robin_stocks
+    yfinance_provider.py    Reads snapshots (incl. cash flow) live via yfinance
 data/sample_stocks.csv      Sample offline dataset
-tests/                       pytest unit tests for metrics + scoring + dcf
+tests/                       pytest unit tests for metrics + scoring + dcf + yfinance mapping
 ```
 
 ## Ideas for extending this
 
-- Add more metrics that need a full financial-statement data source, since
-  Robinhood's fundamentals endpoint doesn't include these: Piotroski
-  F-Score, debt/equity, revenue/earnings growth trend.
-- Fill in `operating_cash_flow`/`capital_expenditures` for more of the
-  sample tickers (currently only AAPL has them).
+- Add more metrics now that `YFinanceProvider` exposes full financial
+  statements: Piotroski F-Score, debt/equity, ROE, revenue/earnings growth
+  trend.
 - Track a watchlist's score over time instead of a single point-in-time
   screen.
 - Weight metrics by sector (e.g. banks structurally carry more leverage,

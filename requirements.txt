@@ -1,1 +1,2 @@
 robin_stocks>=3.0.0
+yfinance>=1.5.0
