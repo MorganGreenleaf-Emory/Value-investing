@@ -94,11 +94,38 @@ need a missing input are simply excluded from that stock's score instead
 of crashing. `operating_cash_flow` and `capital_expenditures` in
 particular have to come from a source with real financial statements
 (a 10-K/10-Q, or a site like stockanalysis.com) since Robinhood doesn't
-provide them; the bundled sample data only fills these in for AAPL, from
-its FY2025 10-K (operating cash flow $111.482B, capex $12.715B → FCF
-~$98.77B, ~2.2% FCF yield at a $4.53T market cap). With the default DCF
-assumptions this also produces a ~$116/share DCF fair value against an
-actual price of $308 — a margin of safety of about -167%.
+provide them. The bundled sample data fills these in from each company's
+FY2025 10-K for 9 of the 10 tickers:
+
+| Symbol | Operating cash flow | Capex | FCF |
+|---|---|---|---|
+| AAPL | $111.48B | $12.72B | $98.77B |
+| MSFT | $136.20B | $64.60B | $71.60B |
+| KO | $7.40B* | $2.20B | $5.20B* |
+| JNJ | $22.87B | $5.46B | $17.41B |
+| PG | $17.80B | $3.77B | $14.03B |
+| INTC | $9.70B | $14.60B | -$4.90B |
+| PFE | $11.70B | $2.60B | $9.10B |
+| T | $40.30B | $20.80B | $19.50B |
+| VZ | $37.10B | $17.00B | $20.10B |
+
+\* Coca-Cola's reported FY2025 operating cash flow was depressed by a
+one-time $6.1B contingent-consideration payment tied to the fairlife
+acquisition; this is the literal GAAP figure, not adjusted for that.
+
+**WFC is intentionally left blank.** A clean cash-flow-statement figure
+wasn't reliably extractable, but more importantly: this whole FCF/DCF
+approach is a poor fit for a bank in the first place. Banks' "operating"
+cash flow is dominated by loan and deposit movements rather than a
+product/service business, and their real capital intensity isn't capex
+on premises and equipment — it's regulatory capital. Valuing a bank this
+way would produce a number that looks precise but means something
+different than it does for AAPL or KO. (P/E, P/B, and dividend yield —
+already in the CSV — are the standard tools for bank valuation instead.)
+
+With the default DCF assumptions, AAPL's $98.77B FCF produces a ~$116/share
+fair value against an actual price of $308 — a margin of safety of about
+-167%.
 
 ## Running tests
 
