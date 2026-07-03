@@ -42,6 +42,25 @@ def margin_of_safety(stock: StockSnapshot) -> Optional[float]:
     return (gn - stock.price) / gn
 
 
+def free_cash_flow(stock: StockSnapshot) -> Optional[float]:
+    """Operating cash flow minus capital expenditures, in dollars.
+
+    Both inputs have to be supplied manually (see StockSnapshot) since
+    Robinhood's fundamentals endpoint doesn't expose cash-flow-statement data.
+    """
+    if stock.operating_cash_flow is None or stock.capital_expenditures is None:
+        return None
+    return stock.operating_cash_flow - stock.capital_expenditures
+
+
+def fcf_yield(stock: StockSnapshot) -> Optional[float]:
+    """Free cash flow as a fraction of market cap. Higher = cheaper."""
+    fcf = free_cash_flow(stock)
+    if fcf is None or not stock.market_cap or stock.market_cap <= 0:
+        return None
+    return fcf / stock.market_cap
+
+
 def price_position_in_52w_range(stock: StockSnapshot) -> Optional[float]:
     """0.0 = sitting at the 52-week low, 1.0 = sitting at the 52-week high."""
     if stock.high_52_weeks is None or stock.low_52_weeks is None:

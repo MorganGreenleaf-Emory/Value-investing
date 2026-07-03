@@ -26,11 +26,12 @@ class ScoredStock:
 
 # (name, extractor, weight, lower_is_better)
 _METRIC_DEFINITIONS: List[tuple] = [
-    ("pe_ratio", lambda s: s.pe_ratio if s.pe_ratio and s.pe_ratio > 0 else None, 0.25, True),
-    ("pb_ratio", lambda s: s.pb_ratio if s.pb_ratio and s.pb_ratio > 0 else None, 0.20, True),
+    ("pe_ratio", lambda s: s.pe_ratio if s.pe_ratio and s.pe_ratio > 0 else None, 0.20, True),
+    ("pb_ratio", lambda s: s.pb_ratio if s.pb_ratio and s.pb_ratio > 0 else None, 0.15, True),
     ("dividend_yield", lambda s: s.dividend_yield, 0.15, False),
-    ("margin_of_safety", metrics.margin_of_safety, 0.25, False),
+    ("margin_of_safety", metrics.margin_of_safety, 0.20, False),
     ("price_position_in_52w_range", metrics.price_position_in_52w_range, 0.15, True),
+    ("fcf_yield", metrics.fcf_yield, 0.15, False),
 ]
 
 

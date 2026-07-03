@@ -24,12 +24,19 @@ a simple heuristic, not a recommendation engine.
      above) the Graham Number, as a fraction.
    - **Price position in 52-week range** — 0.0 at the 52-week low, 1.0 at
      the 52-week high.
+   - **Free cash flow** and **FCF yield** — operating cash flow minus
+     capex, as a fraction of market cap. Robinhood's fundamentals endpoint
+     has no cash-flow-statement data at all, so these two inputs have to
+     be entered manually (e.g. from a 10-K/10-Q) via the CSV provider;
+     they're `None` — and simply excluded from the score — for any stock
+     that doesn't have them.
 3. `value_investing/scoring.py` ranks every stock in the batch against the
    others on each metric (cheaper P/E, cheaper P/B, higher dividend yield,
-   higher margin of safety, lower position in the 52-week range are all
-   "better"), and combines the ranks into a single 0-100 score. **The
-   score is only meaningful relative to the set of tickers you screen
-   together** — it's a relative ranking, not an absolute one.
+   higher margin of safety, lower position in the 52-week range, higher
+   FCF yield are all "better"), and combines the ranks into a single
+   0-100 score. **The score is only meaningful relative to the set of
+   tickers you screen together** — it's a relative ranking, not an
+   absolute one.
 
 ## Setup
 
@@ -63,12 +70,17 @@ Bring your own watchlist by editing `data/sample_stocks.csv` or pointing
 `--csv` at your own file with the same columns:
 
 ```
-symbol,price,pe_ratio,pb_ratio,dividend_yield,market_cap,high_52_weeks,low_52_weeks,sector,industry
+symbol,price,pe_ratio,pb_ratio,dividend_yield,market_cap,high_52_weeks,low_52_weeks,sector,industry,operating_cash_flow,capital_expenditures
 ```
 
 Any column besides `symbol` and `price` can be left blank — metrics that
 need a missing input are simply excluded from that stock's score instead
-of crashing.
+of crashing. `operating_cash_flow` and `capital_expenditures` in
+particular have to come from a source with real financial statements
+(a 10-K/10-Q, or a site like stockanalysis.com) since Robinhood doesn't
+provide them; the bundled sample data only fills these in for AAPL, from
+its FY2025 10-K (operating cash flow $111.482B, capex $12.715B → FCF
+~$98.77B, ~2.2% FCF yield at a $4.53T market cap).
 
 ## Running tests
 
@@ -81,7 +93,7 @@ pytest
 ```
 value_investing/
   models.py               StockSnapshot data model
-  metrics.py               EPS, book value, Graham Number, margin of safety
+  metrics.py               EPS, book value, Graham Number, margin of safety, FCF yield
   scoring.py                Cross-sectional ranking -> 0-100 value score
   screener.py               CLI entry point
   providers/
@@ -93,9 +105,11 @@ tests/                       pytest unit tests for metrics + scoring
 
 ## Ideas for extending this
 
-- Add more metrics: Piotroski F-Score, free cash flow yield, debt/equity
-  (would need a data source with full financial statements, since
-  Robinhood's fundamentals endpoint doesn't include these).
+- Add more metrics that need a full financial-statement data source, since
+  Robinhood's fundamentals endpoint doesn't include these: Piotroski
+  F-Score, debt/equity, revenue/earnings growth trend.
+- Fill in `operating_cash_flow`/`capital_expenditures` for more of the
+  sample tickers (currently only AAPL has them).
 - Track a watchlist's score over time instead of a single point-in-time
   screen.
 - Weight metrics by sector (e.g. banks structurally carry more leverage,

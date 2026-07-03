@@ -50,7 +50,7 @@ def run(argv: Optional[List[str]] = None) -> int:
 
 
 def print_table(scored: List[ScoredStock]) -> None:
-    headers = ["Rank", "Symbol", "Score", "P/E", "P/B", "Div Yield %", "Margin of Safety %", "Sector"]
+    headers = ["Rank", "Symbol", "Score", "P/E", "P/B", "Div Yield %", "Margin of Safety %", "FCF Yield %", "Sector"]
     rows = []
     for rank, r in enumerate(scored, start=1):
         d = r.details
@@ -63,6 +63,7 @@ def print_table(scored: List[ScoredStock]) -> None:
                 _fmt(d.get("pb_ratio")),
                 _fmt(d.get("dividend_yield")),
                 _fmt(d.get("margin_of_safety"), as_pct=True),
+                _fmt(d.get("fcf_yield"), as_pct=True),
                 r.stock.sector or "-",
             ]
         )

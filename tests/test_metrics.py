@@ -1,6 +1,8 @@
 from value_investing.metrics import (
     book_value_per_share,
     earnings_per_share,
+    fcf_yield,
+    free_cash_flow,
     graham_number,
     margin_of_safety,
     price_position_in_52w_range,
@@ -67,3 +69,43 @@ def test_price_position_in_52w_range():
 
 def test_price_position_none_without_range():
     assert price_position_in_52w_range(make_stock(high_52_weeks=None, low_52_weeks=50.0)) is None
+
+
+def test_free_cash_flow():
+    stock = make_stock(operating_cash_flow=100.0, capital_expenditures=30.0)
+    assert free_cash_flow(stock) == 70.0
+
+
+def test_free_cash_flow_none_without_both_inputs():
+    assert free_cash_flow(make_stock(operating_cash_flow=100.0, capital_expenditures=None)) is None
+    assert free_cash_flow(make_stock(operating_cash_flow=None, capital_expenditures=30.0)) is None
+
+
+def test_fcf_yield():
+    stock = make_stock(market_cap=1000.0, operating_cash_flow=100.0, capital_expenditures=30.0)
+    assert fcf_yield(stock) == 0.07
+
+
+def test_fcf_yield_none_without_market_cap():
+    stock = make_stock(market_cap=None, operating_cash_flow=100.0, capital_expenditures=30.0)
+    assert fcf_yield(stock) is None
+
+
+def test_apple_fy2025_free_cash_flow():
+    # Real figures from Apple's FY2025 10-K (year ended 2025-09-27):
+    # operating cash flow $111.482B, capex $12.715B -> FCF ~$98.77B.
+    # Market cap and price are an intraday Robinhood snapshot from 2026-07-02.
+    aapl = make_stock(
+        symbol="AAPL",
+        price=308.24,
+        market_cap=4_527_244_176_000.0,
+        operating_cash_flow=111_482_000_000.0,
+        capital_expenditures=12_715_000_000.0,
+    )
+    fcf = free_cash_flow(aapl)
+    assert fcf is not None
+    assert round(fcf / 1e9, 2) == 98.77
+
+    yld = fcf_yield(aapl)
+    assert yld is not None
+    assert round(yld * 100, 2) == 2.18

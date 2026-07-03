@@ -16,7 +16,8 @@ class CSVProvider(DataProvider):
     testing without needing a live brokerage connection.
 
     Expected columns: symbol,price,pe_ratio,pb_ratio,dividend_yield,
-    market_cap,high_52_weeks,low_52_weeks,sector,industry
+    market_cap,high_52_weeks,low_52_weeks,sector,industry,
+    operating_cash_flow,capital_expenditures
     All columns besides symbol and price may be left blank.
     """
 
@@ -43,6 +44,8 @@ class CSVProvider(DataProvider):
                         low_52_weeks=_to_float(row.get("low_52_weeks")),
                         sector=row.get("sector") or None,
                         industry=row.get("industry") or None,
+                        operating_cash_flow=_to_float(row.get("operating_cash_flow")),
+                        capital_expenditures=_to_float(row.get("capital_expenditures")),
                     )
                 )
 
