@@ -10,9 +10,10 @@ bank stocks.
 """
 
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from . import metrics
+from .dcf import DCFAssumptions, dcf_margin_of_safety
 from .models import StockSnapshot
 
 
@@ -24,14 +25,17 @@ class ScoredStock:
     details: Dict[str, Optional[float]] = field(default_factory=dict)
 
 
-# (name, extractor, weight, lower_is_better)
+# (name, extractor, weight, lower_is_better). Two independent value-vs-price
+# signals feed the score: graham_margin_of_safety (mechanical, ratio-based)
+# and dcf_margin_of_safety (assumption-driven, cash-flow-based).
 _METRIC_DEFINITIONS: List[tuple] = [
-    ("pe_ratio", lambda s: s.pe_ratio if s.pe_ratio and s.pe_ratio > 0 else None, 0.20, True),
+    ("pe_ratio", lambda s: s.pe_ratio if s.pe_ratio and s.pe_ratio > 0 else None, 0.15, True),
     ("pb_ratio", lambda s: s.pb_ratio if s.pb_ratio and s.pb_ratio > 0 else None, 0.15, True),
     ("dividend_yield", lambda s: s.dividend_yield, 0.15, False),
-    ("margin_of_safety", metrics.margin_of_safety, 0.20, False),
-    ("price_position_in_52w_range", metrics.price_position_in_52w_range, 0.15, True),
-    ("fcf_yield", metrics.fcf_yield, 0.15, False),
+    ("graham_margin_of_safety", metrics.margin_of_safety, 0.15, False),
+    ("price_position_in_52w_range", metrics.price_position_in_52w_range, 0.10, True),
+    ("fcf_yield", metrics.fcf_yield, 0.10, False),
+    ("dcf_margin_of_safety", 0.20, False),
 ]
 
 
@@ -51,9 +55,24 @@ def _percentile_ranks(values: List[tuple]) -> Dict[int, float]:
     return ranks
 
 
-def score_stocks(stocks: List[StockSnapshot]) -> List[ScoredStock]:
+def _build_metric_definitions(dcf_assumptions: Optional[DCFAssumptions]) -> List[tuple]:
+    """dcf_margin_of_safety needs the caller's assumptions bound into its
+    extractor, so it's assembled here rather than defined statically."""
+    definitions = list(_METRIC_DEFINITIONS[:-1])
+    _, weight, lower_is_better = _METRIC_DEFINITIONS[-1]
+    definitions.append(
+        ("dcf_margin_of_safety", lambda s: dcf_margin_of_safety(s, dcf_assumptions), weight, lower_is_better)
+    )
+    return definitions
+
+
+def score_stocks(
+    stocks: List[StockSnapshot], dcf_assumptions: Optional[DCFAssumptions] = None
+) -> List[ScoredStock]:
+    metric_definitions = _build_metric_definitions(dcf_assumptions)
+
     metric_ranks: Dict[str, Dict[int, float]] = {}
-    for name, extractor, _weight, lower_is_better in _METRIC_DEFINITIONS:
+    for name, extractor, _weight, lower_is_better in metric_definitions:
         available = [(i, v) for i, s in enumerate(stocks) if (v := extractor(s)) is not None]
         ranks = _percentile_ranks(available)
         if lower_is_better:
@@ -65,7 +84,7 @@ def score_stocks(stocks: List[StockSnapshot]) -> List[ScoredStock]:
         weighted_sum = 0.0
         total_weight = 0.0
         details: Dict[str, Optional[float]] = {}
-        for name, extractor, weight, _lower_is_better in _METRIC_DEFINITIONS:
+        for name, extractor, weight, _lower_is_better in metric_definitions:
             details[name] = extractor(stock)
             rank = metric_ranks[name].get(i)
             if rank is not None:

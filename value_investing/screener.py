@@ -2,12 +2,14 @@
 
     python -m value_investing.screener AAPL KO WFC
     python -m value_investing.screener --source robinhood AAPL KO WFC
+    python -m value_investing.screener AAPL --growth-rate 0.05 --discount-rate 0.09
 """
 
 import argparse
 import sys
 from typing import List, Optional
 
+from .dcf import DCFAssumptions
 from .providers.csv_provider import CSVProvider
 from .scoring import ScoredStock, score_stocks
 
@@ -18,6 +20,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--source", choices=["csv", "robinhood"], default="csv")
     parser.add_argument("--csv", default="data/sample_stocks.csv", help="Path to the CSV file when --source csv")
     parser.add_argument("--top", type=int, default=None, help="Only show the top N results")
+    parser.add_argument(
+        "--growth-rate", type=float, default=0.08, help="DCF: projected annual FCF growth rate (default 0.08)"
+    )
+    parser.add_argument(
+        "--discount-rate", type=float, default=0.10, help="DCF: discount rate / required return (default 0.10)"
+    )
+    parser.add_argument(
+        "--terminal-growth",
+        type=float,
+        default=0.025,
+        help="DCF: perpetual growth rate after the projection window (default 0.025)",
+    )
+    parser.add_argument("--years", type=int, default=5, help="DCF: number of years explicitly projected (default 5)")
     return parser
 
 
@@ -32,6 +47,12 @@ def run(argv: Optional[List[str]] = None) -> int:
         provider = RobinhoodProvider()
 
     try:
+        dcf_assumptions = DCFAssumptions(
+            growth_rate=args.growth_rate,
+            discount_rate=args.discount_rate,
+            terminal_growth_rate=args.terminal_growth,
+            years=args.years,
+        )
         snapshots = provider.get_snapshots(args.symbols or None)
     except (ValueError, RuntimeError, ImportError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -41,7 +62,7 @@ def run(argv: Optional[List[str]] = None) -> int:
         print("No data found for the requested symbols.", file=sys.stderr)
         return 1
 
-    scored = score_stocks(snapshots)
+    scored = score_stocks(snapshots, dcf_assumptions=dcf_assumptions)
     if args.top:
         scored = scored[: args.top]
 
@@ -50,7 +71,18 @@ def run(argv: Optional[List[str]] = None) -> int:
 
 
 def print_table(scored: List[ScoredStock]) -> None:
-    headers = ["Rank", "Symbol", "Score", "P/E", "P/B", "Div Yield %", "Margin of Safety %", "FCF Yield %", "Sector"]
+    headers = [
+        "Rank",
+        "Symbol",
+        "Score",
+        "P/E",
+        "P/B",
+        "Div Yield %",
+        "Graham MoS %",
+        "DCF MoS %",
+        "FCF Yield %",
+        "Sector",
+    ]
     rows = []
     for rank, r in enumerate(scored, start=1):
         d = r.details
@@ -62,7 +94,8 @@ def print_table(scored: List[ScoredStock]) -> None:
                 _fmt(d.get("pe_ratio")),
                 _fmt(d.get("pb_ratio")),
                 _fmt(d.get("dividend_yield")),
-                _fmt(d.get("margin_of_safety"), as_pct=True),
+                _fmt(d.get("graham_margin_of_safety"), as_pct=True),
+                _fmt(d.get("dcf_margin_of_safety"), as_pct=True),
                 _fmt(d.get("fcf_yield"), as_pct=True),
                 r.stock.sector or "-",
             ]

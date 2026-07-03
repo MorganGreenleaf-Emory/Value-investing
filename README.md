@@ -2,8 +2,9 @@
 
 A small, learning-focused Python tool that scores stocks on classic
 value-investing metrics — cheapness relative to earnings and book value,
-dividend yield, margin of safety versus a Graham Number fair-value estimate,
-and where the price sits in its 52-week range.
+dividend yield, margin of safety versus two independent fair-value
+estimates (a Graham Number and a discounted cash flow model), and where
+the price sits in its 52-week range.
 
 This is an educational project, not investment advice. The scoring model is
 a simple heuristic, not a recommendation engine.
@@ -30,13 +31,24 @@ a simple heuristic, not a recommendation engine.
      be entered manually (e.g. from a 10-K/10-Q) via the CSV provider;
      they're `None` — and simply excluded from the score — for any stock
      that doesn't have them.
-3. `value_investing/scoring.py` ranks every stock in the batch against the
+3. `value_investing/dcf.py` computes a **discounted cash flow (DCF) fair
+   value**: project free cash flow forward at a growth rate for N years,
+   discount each year back to the present, add a discounted terminal value
+   (Gordon growth / perpetuity formula) for everything after, and divide
+   by shares outstanding. Unlike the Graham Number, a DCF can't be derived
+   from ratios alone — it needs explicit growth-rate/discount-rate
+   assumptions, exposed as a `DCFAssumptions` object (and as `--growth-rate`
+   / `--discount-rate` / `--terminal-growth` / `--years` CLI flags) rather
+   than hidden behind a single number. It also needs `operating_cash_flow`
+   and `capital_expenditures`, so it's subject to the same manual-data
+   requirement as FCF yield.
+4. `value_investing/scoring.py` ranks every stock in the batch against the
    others on each metric (cheaper P/E, cheaper P/B, higher dividend yield,
-   higher margin of safety, lower position in the 52-week range, higher
-   FCF yield are all "better"), and combines the ranks into a single
-   0-100 score. **The score is only meaningful relative to the set of
-   tickers you screen together** — it's a relative ranking, not an
-   absolute one.
+   higher Graham margin of safety, higher DCF margin of safety, lower
+   position in the 52-week range, higher FCF yield are all "better"), and
+   combines the ranks into a single 0-100 score. **The score is only
+   meaningful relative to the set of tickers you screen together** — it's
+   a relative ranking, not an absolute one.
 
 ## Setup
 
@@ -53,6 +65,10 @@ snapshot of 10 real tickers):
 python -m value_investing.screener AAPL MSFT KO WFC T VZ
 python -m value_investing.screener            # screens every row in the CSV
 python -m value_investing.screener --top 5    # only show the top 5
+
+# override the DCF's assumptions (defaults: 8% growth, 10% discount rate,
+# 2.5% terminal growth, 5-year projection window)
+python -m value_investing.screener AAPL --growth-rate 0.05 --discount-rate 0.09
 ```
 
 Live, via your own Robinhood account:
@@ -80,7 +96,9 @@ particular have to come from a source with real financial statements
 (a 10-K/10-Q, or a site like stockanalysis.com) since Robinhood doesn't
 provide them; the bundled sample data only fills these in for AAPL, from
 its FY2025 10-K (operating cash flow $111.482B, capex $12.715B → FCF
-~$98.77B, ~2.2% FCF yield at a $4.53T market cap).
+~$98.77B, ~2.2% FCF yield at a $4.53T market cap). With the default DCF
+assumptions this also produces a ~$116/share DCF fair value against an
+actual price of $308 — a margin of safety of about -167%.
 
 ## Running tests
 
@@ -94,13 +112,14 @@ pytest
 value_investing/
   models.py               StockSnapshot data model
   metrics.py               EPS, book value, Graham Number, margin of safety, FCF yield
+  dcf.py                    Discounted cash flow fair value + margin of safety
   scoring.py                Cross-sectional ranking -> 0-100 value score
   screener.py               CLI entry point
   providers/
     csv_provider.py         Reads snapshots from a CSV file
     robinhood_provider.py   Reads snapshots live via robin_stocks
 data/sample_stocks.csv      Sample offline dataset
-tests/                       pytest unit tests for metrics + scoring
+tests/                       pytest unit tests for metrics + scoring + dcf
 ```
 
 ## Ideas for extending this
